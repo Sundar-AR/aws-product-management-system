@@ -1,131 +1,240 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 
-function ProductList({ onEdit }) {
+function ProductList({ onEdit, refresh }) {
   const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const fetchProducts = async () => {
     try {
+      setLoading(true);
+
       const response = await api.get("/products/");
+
       setProducts(response.data);
     } catch (error) {
       console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [refresh]);
 
-  const deleteProduct = async (id) => {
-    const confirmDelete = window.confirm(
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm(
       "Are you sure you want to delete this product?"
     );
 
-    if (!confirmDelete) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
       await api.delete(`/products/${id}/`);
+
       fetchProducts();
     } catch (error) {
       console.error("Error deleting product:", error);
+      alert("Failed to delete product.");
     }
   };
 
-  if (products.length === 0) {
+  const getStatus = (quantity) => {
+    if (quantity === 0) {
+      return {
+        text: "Out of Stock",
+        className: "status-out",
+      };
+    }
+
+    if (quantity <= 5) {
+      return {
+        text: "Low Stock",
+        className: "status-low",
+      };
+    }
+
+    return {
+      text: "In Stock",
+      className: "status-in",
+    };
+  };
+
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">📦</div>
-        <h3>No products yet</h3>
-        <p>Add your first product to get started.</p>
+      <div className="products-container">
+        <div className="loading-message">
+          Loading products...
+        </div>
       </div>
     );
   }
 
   return (
-    <section className="products-section">
-
+    <div className="products-container">
+      {/* Header */}
       <div className="products-header">
-        <h2>All Products</h2>
-        <span className="product-count">
-          {products.length} Products
-        </span>
+        <div>
+          <h2>Products</h2>
+          <p>Manage your product inventory</p>
+        </div>
       </div>
 
-      <div className="product-grid">
+      {/* Search and filter */}
+      <div className="products-toolbar">
+        <div className="search-box">
+          <span className="search-icon">⌕</span>
 
-        {products.map((product) => (
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-          <div className="product-card" key={product.id}>
-
-            <div className="product-image">
-
-              {product.image ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                />
-              ) : (
-                <span>📦</span>
-              )}
-
-            </div>
-
-            <div className="product-info">
-
-              <h3>{product.name}</h3>
-
-              <p className="description">
-                {product.description || "No description available"}
-              </p>
-
-              <div className="product-details">
-
-                <span className="price">
-                  ₹{Number(product.price).toLocaleString("en-IN")}
-                </span>
-
-                <span
-                  className={
-                    product.quantity > 0
-                      ? "stock available"
-                      : "stock out"
-                  }
-                >
-                  {product.quantity > 0
-                    ? `Stock: ${product.quantity}`
-                    : "Out of stock"}
-                </span>
-
-              </div>
-
-              <div className="card-actions">
-
-                <button
-                  className="edit-button"
-                  onClick={() => onEdit(product)}
-                >
-                  Edit
-                </button>
-
-                <button
-                  className="delete-button"
-                  onClick={() => deleteProduct(product.id)}
-                >
-                  Delete
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        ))}
-
+        <button className="filter-btn">
+          ☰ Filter
+        </button>
       </div>
 
-    </section>
+      {/* Product table */}
+      <div className="table-wrapper">
+        <table className="products-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredProducts.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="empty-message">
+                  No products found.
+                </td>
+              </tr>
+            ) : (
+              filteredProducts.map((product) => {
+                const status = getStatus(product.quantity);
+
+                return (
+                  <tr key={product.id}>
+                    {/* Product */}
+                    <td>
+                      <div className="product-info">
+                        <div className="product-image-container">
+                          {product.image ? (
+                            <img
+                              src={
+                                product.image.startsWith("http")
+                                  ? product.image
+                                  : `http://127.0.0.1:8000${product.image}`
+                              }
+                              alt={product.name}
+                              className="product-image"
+                            />
+                          ) : (
+                            <div className="product-image-placeholder">
+                              📦
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="product-details">
+                          <strong>{product.name}</strong>
+
+                          <span>
+                            {product.description
+                              ? product.description
+                              : "No description"}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Price */}
+                    <td>
+                      <span className="product-price">
+                        ₹{Number(product.price).toLocaleString("en-IN")}
+                      </span>
+                    </td>
+
+                    {/* Quantity */}
+                    <td>
+                      <span className="product-quantity">
+                        {product.quantity}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td>
+                      <span
+                        className={`status-badge ${status.className}`}
+                      >
+                        {status.text}
+                      </span>
+                    </td>
+
+                    {/* Updated */}
+                    <td>
+                      <span className="updated-date">
+                        {product.updated_at
+                          ? new Date(
+                              product.updated_at
+                            ).toLocaleDateString("en-IN")
+                          : "-"}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="edit-btn"
+                          onClick={() => onEdit(product)}
+                          title="Edit product"
+                        >
+                          ✏️
+                        </button>
+
+                        <button
+                          className="delete-btn"
+                          onClick={() =>
+                            handleDelete(product.id)
+                          }
+                          title="Delete product"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Product count */}
+      <div className="products-footer">
+        Showing {filteredProducts.length} of {products.length} products
+      </div>
+    </div>
   );
 }
 

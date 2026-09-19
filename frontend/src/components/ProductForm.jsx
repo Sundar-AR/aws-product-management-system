@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import api from "../services/api";
 
-function ProductForm({ selectedProduct, onSuccess }) {
+function ProductForm({ product, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -9,95 +9,194 @@ function ProductForm({ selectedProduct, onSuccess }) {
     quantity: "",
   });
 
+  const [image, setImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    if (selectedProduct) {
+    if (product) {
       setFormData({
-        name: selectedProduct.name,
-        description: selectedProduct.description,
-        price: selectedProduct.price,
-        quantity: selectedProduct.quantity,
+        name: product.name || "",
+        description: product.description || "",
+        price: product.price || "",
+        quantity: product.quantity || "",
       });
     }
-  }, [selectedProduct]);
+  }, [product]);
 
-  const handleChange = (event) => {
-    setFormData({
-      ...formData,
-      [event.target.name]: event.target.value,
-    });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleImageChange = (e) => {
+    const selectedFile = e.target.files[0];
+
+    if (selectedFile) {
+      setImage(selectedFile);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setLoading(true);
 
     try {
-      if (selectedProduct) {
-        await api.put(
-          `/products/${selectedProduct.id}/`,
-          formData
-        );
-      } else {
-        await api.post("/products/", formData);
+      const data = new FormData();
+
+      data.append("name", formData.name);
+      data.append("description", formData.description);
+      data.append("price", formData.price);
+      data.append("quantity", formData.quantity);
+
+      if (image) {
+        data.append("image", image);
       }
 
-      setFormData({
-        name: "",
-        description: "",
-        price: "",
-        quantity: "",
-      });
+      if (product) {
+        await api.put(`/products/${product.id}/`, data);
+      } else {
+        await api.post("/products/", data);
+      }
 
       onSuccess();
     } catch (error) {
       console.error("Error saving product:", error);
+
+      if (error.response) {
+        console.error("Server response:", error.response.data);
+      }
+
+      alert("Failed to save product.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>
-        {selectedProduct ? "Update Product" : "Add Product"}
-      </h2>
+    <div className="modal-overlay">
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <h2>{product ? "Edit Product" : "Add Product"}</h2>
+            <p>
+              {product
+                ? "Update product information"
+                : "Add a new product to your inventory"}
+            </p>
+          </div>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Product name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-        />
+          <button
+            type="button"
+            className="close-btn"
+            onClick={onCancel}
+          >
+            ×
+          </button>
+        </div>
 
-        <textarea
-          name="description"
-          placeholder="Description"
-          value={formData.description}
-          onChange={handleChange}
-        />
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Product Name</label>
 
-        <input
-          type="number"
-          name="price"
-          placeholder="Price"
-          value={formData.price}
-          onChange={handleChange}
-          required
-        />
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter product name"
+              required
+            />
+          </div>
 
-        <input
-          type="number"
-          name="quantity"
-          placeholder="Quantity"
-          value={formData.quantity}
-          onChange={handleChange}
-          required
-        />
+          <div className="form-group">
+            <label>Description</label>
 
-        <button type="submit">
-          {selectedProduct ? "Update" : "Create"}
-        </button>
-      </form>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Enter product description"
+              rows="4"
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Price</label>
+
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Quantity</label>
+
+              <input
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                placeholder="0"
+                min="0"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Product Image</label>
+
+            <input
+              type="file"
+              name="image"
+              accept="image/*"
+              onChange={handleImageChange}
+            />
+
+            {image && (
+              <p className="selected-file">
+                Selected: {image.name}
+              </p>
+            )}
+          </div>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="submit-btn"
+              disabled={loading}
+            >
+              {loading
+                ? "Saving..."
+                : product
+                ? "Update Product"
+                : "Add Product"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

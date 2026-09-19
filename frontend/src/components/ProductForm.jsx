@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import "./ProductForm.css";
 
 function ProductForm({ product, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -18,22 +19,31 @@ function ProductForm({ product, onSuccess, onCancel }) {
         name: product.name || "",
         description: product.description || "",
         price: product.price || "",
-        quantity: product.quantity || "",
+        quantity: product.quantity ?? "",
       });
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        quantity: "",
+      });
+
+      setImage(null);
     }
   }, [product]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
+    setFormData((previous) => ({
+      ...previous,
       [name]: value,
     }));
   };
 
   const handleImageChange = (e) => {
-    const selectedFile = e.target.files[0];
+    const selectedFile = e.target.files?.[0];
 
     if (selectedFile) {
       setImage(selectedFile);
@@ -78,11 +88,25 @@ function ProductForm({ product, onSuccess, onCancel }) {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        className="modal"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
         <div className="modal-header">
           <div>
-            <h2>{product ? "Edit Product" : "Add Product"}</h2>
+            <h2>
+              {product ? "Edit Product" : "Add Product"}
+            </h2>
+
             <p>
               {product
                 ? "Update product information"
@@ -94,16 +118,22 @@ function ProductForm({ product, onSuccess, onCancel }) {
             type="button"
             className="close-btn"
             onClick={onCancel}
+            aria-label="Close"
           >
             ×
           </button>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit}>
+          {/* Product Name */}
           <div className="form-group">
-            <label>Product Name</label>
+            <label htmlFor="product-name">
+              Product Name
+            </label>
 
             <input
+              id="product-name"
               type="text"
               name="name"
               value={formData.name}
@@ -113,10 +143,14 @@ function ProductForm({ product, onSuccess, onCancel }) {
             />
           </div>
 
+          {/* Description */}
           <div className="form-group">
-            <label>Description</label>
+            <label htmlFor="product-description">
+              Description
+            </label>
 
             <textarea
+              id="product-description"
               name="description"
               value={formData.description}
               onChange={handleChange}
@@ -125,11 +159,15 @@ function ProductForm({ product, onSuccess, onCancel }) {
             />
           </div>
 
+          {/* Price + Quantity */}
           <div className="form-row">
             <div className="form-group">
-              <label>Price</label>
+              <label htmlFor="product-price">
+                Price
+              </label>
 
               <input
+                id="product-price"
                 type="number"
                 name="price"
                 value={formData.price}
@@ -142,9 +180,12 @@ function ProductForm({ product, onSuccess, onCancel }) {
             </div>
 
             <div className="form-group">
-              <label>Quantity</label>
+              <label htmlFor="product-quantity">
+                Quantity
+              </label>
 
               <input
+                id="product-quantity"
                 type="number"
                 name="quantity"
                 value={formData.quantity}
@@ -156,10 +197,14 @@ function ProductForm({ product, onSuccess, onCancel }) {
             </div>
           </div>
 
+          {/* Image */}
           <div className="form-group">
-            <label>Product Image</label>
+            <label htmlFor="product-image">
+              Product Image
+            </label>
 
             <input
+              id="product-image"
               type="file"
               name="image"
               accept="image/*"
@@ -173,6 +218,7 @@ function ProductForm({ product, onSuccess, onCancel }) {
             )}
           </div>
 
+          {/* Buttons */}
           <div className="modal-actions">
             <button
               type="button"
